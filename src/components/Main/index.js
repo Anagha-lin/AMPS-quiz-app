@@ -11,106 +11,45 @@ import {
 } from 'semantic-ui-react';
 
 import mindImg from '../../images/mind.svg';
-
-import {
-  CATEGORIES,
-  NUM_OF_QUESTIONS,
-  DIFFICULTY,
-  QUESTIONS_TYPE,
-  COUNTDOWN_TIME,
-} from '../../constants';
-import { shuffle } from '../../utils';
-
-import Offline from '../Offline';
+import { COUNTDOWN_TIME } from '../../constants';
 
 const Main = ({ startQuiz }) => {
-  const [category, setCategory] = useState('0');
   const [numOfQuestions, setNumOfQuestions] = useState(5);
-  const [difficulty, setDifficulty] = useState('easy');
-  const [questionsType, setQuestionsType] = useState('0');
+
   const [countdownTime, setCountdownTime] = useState({
     hours: 0,
-    minutes: 120,
+    minutes: 30,
     seconds: 0,
   });
+
   const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState(null);
-  const [offline, setOffline] = useState(false);
 
   const handleTimeChange = (e, { name, value }) => {
-    setCountdownTime({ ...countdownTime, [name]: value });
+    setCountdownTime(prev => ({
+      ...prev,
+      [name]: Number(value),
+    }));
   };
 
-  let allFieldsSelected = false;
-  if (
-    category &&
-    numOfQuestions &&
-    difficulty &&
-    questionsType &&
-    (countdownTime.hours || countdownTime.minutes || countdownTime.seconds)
-  ) {
-    allFieldsSelected = true;
-  }
+  const totalSeconds =
+    (Number(countdownTime.hours) || 0) * 3600 +
+    (Number(countdownTime.minutes) || 0) * 60 +
+    (Number(countdownTime.seconds) || 0);
 
-  const fetchData = () => {
+  const allValid =
+    numOfQuestions > 0 && totalSeconds > 0;
+
+  // START QUIZ
+  const handleStart = () => {
+    if (!allValid) return;
+
     setProcessing(true);
 
-    if (error) setError(null);
-
-    const API = `https://opentdb.com/api.php?amount=${numOfQuestions}&category=${category}&difficulty=${difficulty}&type=${questionsType}`;
-
-    fetch(API)
-      .then(respone => respone.json())
-      .then(data =>
-        setTimeout(() => {
-          const { response_code, results } = data;
-
-          if (response_code === 1) {
-            const message = (
-              <p>
-                The API doesn't have enough questions for your query. (Ex.
-                Asking for 50 Questions in a Category that only has 20.)
-                <br />
-                <br />
-                Please change the <strong>No. of Questions</strong>,{' '}
-                <strong>Difficulty Level</strong>, or{' '}
-                <strong>Type of Questions</strong>.
-              </p>
-            );
-
-            setProcessing(false);
-            setError({ message });
-
-            return;
-          }
-
-          results.forEach(element => {
-            element.options = shuffle([
-              element.correct_answer,
-              ...element.incorrect_answers,
-            ]);
-          });
-
-          setProcessing(false);
-          startQuiz(
-            results,
-            countdownTime.hours + countdownTime.minutes + countdownTime.seconds
-          );
-        }, 1000)
-      )
-      .catch(error =>
-        setTimeout(() => {
-          if (!navigator.onLine) {
-            setOffline(true);
-          } else {
-            setProcessing(false);
-            setError(error);
-          }
-        }, 1000)
-      );
+    setTimeout(() => {
+      startQuiz(numOfQuestions, totalSeconds);
+      setProcessing(false);
+    }, 500);
   };
-
-  if (offline) return <Offline />;
 
   return (
     <Container>
@@ -118,122 +57,78 @@ const Main = ({ startQuiz }) => {
         <Item.Group divided>
           <Item>
             <Item.Image src={mindImg} />
+
             <Item.Content>
               <Item.Header>
-                <h1>The Ultimate Trivia Quiz</h1>
+                <h1>CBT Examination System</h1>
               </Item.Header>
-              {error && (
-                <Message error onDismiss={() => setError(null)}>
-                  <Message.Header>Error!</Message.Header>
-                  {error.message}
-                </Message>
-              )}
+
               <Divider />
+
               <Item.Meta>
-                <p>In which category do you want to play the quiz?</p>
+                <p>Select number of questions</p>
+
                 <Dropdown
                   fluid
                   selection
-                  name="category"
-                  placeholder="Select Quiz Category"
-                  header="Select Quiz Category"
-                  options={CATEGORIES}
-                  value={category}
-                  onChange={(e, { value }) => setCategory(value)}
-                  disabled={processing}
-                />
-                <br />
-                <p>How many questions do you want in your quiz?</p>
-                <Dropdown
-                  fluid
-                  selection
-                  name="numOfQ"
-                  placeholder="Select No. of Questions"
-                  header="Select No. of Questions"
-                  options={NUM_OF_QUESTIONS}
+                  options={[
+                    { key: 5, text: '5', value: 5 },
+                    { key: 10, text: '10', value: 10 },
+                    { key: 20, text: '20', value: 20 },
+                  ]}
                   value={numOfQuestions}
-                  onChange={(e, { value }) => setNumOfQuestions(value)}
-                  disabled={processing}
+                  onChange={(e, { value }) =>
+                    setNumOfQuestions(Number(value))
+                  }
                 />
-                <br />
-                <p>How difficult do you want your quiz to be?</p>
+
+                <br /><br />
+
+                <p>Select timer</p>
+
                 <Dropdown
-                  fluid
-                  selection
-                  name="difficulty"
-                  placeholder="Select Difficulty Level"
-                  header="Select Difficulty Level"
-                  options={DIFFICULTY}
-                  value={difficulty}
-                  onChange={(e, { value }) => setDifficulty(value)}
-                  disabled={processing}
-                />
-                <br />
-                <p>Which type of questions do you want in your quiz?</p>
-                <Dropdown
-                  fluid
-                  selection
-                  name="type"
-                  placeholder="Select Questions Type"
-                  header="Select Questions Type"
-                  options={QUESTIONS_TYPE}
-                  value={questionsType}
-                  onChange={(e, { value }) => setQuestionsType(value)}
-                  disabled={processing}
-                />
-                <br />
-                <p>Please select the countdown time for your quiz.</p>
-                <Dropdown
-                  search
                   selection
                   name="hours"
-                  placeholder="Select Hours"
-                  header="Select Hours"
                   options={COUNTDOWN_TIME.hours}
                   value={countdownTime.hours}
                   onChange={handleTimeChange}
-                  disabled={processing}
                 />
+
                 <Dropdown
-                  search
                   selection
                   name="minutes"
-                  placeholder="Select Minutes"
-                  header="Select Minutes"
                   options={COUNTDOWN_TIME.minutes}
                   value={countdownTime.minutes}
                   onChange={handleTimeChange}
-                  disabled={processing}
                 />
+
                 <Dropdown
-                  search
                   selection
                   name="seconds"
-                  placeholder="Select Seconds"
-                  header="Select Seconds"
                   options={COUNTDOWN_TIME.seconds}
                   value={countdownTime.seconds}
                   onChange={handleTimeChange}
-                  disabled={processing}
                 />
               </Item.Meta>
+
               <Divider />
-              <Item.Extra>
-                <Button
-                  primary
-                  size="big"
-                  icon="play"
-                  labelPosition="left"
-                  content={processing ? 'Processing...' : 'Play Now'}
-                  onClick={fetchData}
-                  disabled={!allFieldsSelected || processing}
-                />
-              </Item.Extra>
+
+              {processing && (
+                <Message info content="Preparing exam..." />
+              )}
+
+              <Button
+                primary
+                size="large"
+                icon="play"
+                content="Start Exam"
+                onClick={handleStart}
+                disabled={!allValid || processing}
+              />
             </Item.Content>
           </Item>
         </Item.Group>
       </Segment>
-      <br />
     </Container>
   );
 };

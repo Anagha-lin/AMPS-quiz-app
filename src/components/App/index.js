@@ -2,101 +2,121 @@ import React, { useState } from 'react';
 
 import Layout from '../Layout';
 import Loader from '../Loader';
-import Main from '../Main';
 import Quiz from '../Quiz';
 import Result from '../Result';
+import Main from '../Main';
 
 import { shuffle } from '../../utils';
+
+import Landing from '../../pages/Landing';
+import Login from '../../pages/Login';
+
+import questions from '../../data/questions';
 
 const App = () => {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(null);
-  const [data, setData] = useState(null);
-  const [countdownTime, setCountdownTime] = useState(null);
-  const [isQuizStarted, setIsQuizStarted] = useState(false);
-  const [isQuizCompleted, setIsQuizCompleted] = useState(false);
+
+  const [data, setData] = useState([]);
+  const [countdownTime, setCountdownTime] = useState(1800);
+
   const [resultData, setResultData] = useState(null);
 
-  const startQuiz = (data, countdownTime) => {
+  const [step, setStep] = useState('landing');
+  const [student, setStudent] = useState(null);
+
+  // =========================
+  // START QUIZ (from Main)
+  // =========================
+  const startQuiz = (numQuestions, totalSeconds) => {
     setLoading(true);
+
     setLoadingMessage({
-      title: 'Loading your quiz...',
-      message: "It won't be long!",
+      title: 'Loading Exam...',
+      message: 'Preparing CBT session',
     });
-    setCountdownTime(countdownTime);
 
     setTimeout(() => {
-      setData(data);
-      setIsQuizStarted(true);
+      const selected = shuffle([...questions])
+        .slice(0, numQuestions)
+        .map(q => ({
+          ...q,
+          options: shuffle([...(q.options || [])]),
+        }));
+
+      setData(selected);
+      setCountdownTime(totalSeconds);
+      setStep('quiz');
       setLoading(false);
-    }, 1000);
+    }, 800);
   };
 
-  const endQuiz = resultData => {
+  const endQuiz = (result) => {
     setLoading(true);
-    setLoadingMessage({
-      title: 'Fetching your results...',
-      message: 'Just a moment!',
-    });
 
     setTimeout(() => {
-      setIsQuizStarted(false);
-      setIsQuizCompleted(true);
-      setResultData(resultData);
+      setResultData(result);
+      setStep('result');
       setLoading(false);
-    }, 2000);
+    }, 800);
   };
 
   const replayQuiz = () => {
-    setLoading(true);
-    setLoadingMessage({
-      title: 'Getting ready for round two.',
-      message: "It won't take long!",
-    });
+    setStep('quiz');
+    setResultData(null);
 
-    const shuffledData = shuffle(data);
-    shuffledData.forEach(element => {
-      element.options = shuffle(element.options);
-    });
+    const reshuffled = shuffle([...data]).map(q => ({
+      ...q,
+      options: shuffle([...(q.options || [])]),
+    }));
 
-    setData(shuffledData);
-
-    setTimeout(() => {
-      setIsQuizStarted(true);
-      setIsQuizCompleted(false);
-      setResultData(null);
-      setLoading(false);
-    }, 1000);
+    setData(reshuffled);
   };
 
   const resetQuiz = () => {
-    setLoading(true);
-    setLoadingMessage({
-      title: 'Loading the home screen.',
-      message: 'Thank you for playing!',
-    });
-
-    setTimeout(() => {
-      setData(null);
-      setCountdownTime(null);
-      setIsQuizStarted(false);
-      setIsQuizCompleted(false);
-      setResultData(null);
-      setLoading(false);
-    }, 1000);
+    setData([]);
+    setResultData(null);
+    setStudent(null);
+    setStep('landing');
   };
 
   return (
     <Layout>
       {loading && <Loader {...loadingMessage} />}
-      {!loading && !isQuizStarted && !isQuizCompleted && (
+
+      {!loading && step === 'landing' && (
+        <Landing goToLogin={() => setStep('login')} />
+      )}
+
+      {!loading && step === 'login' && (
+        <Login
+          onSuccess={(user) => {
+            setStudent(user);
+            setStep('main');
+          }}
+        />
+      )}
+
+      {!loading && step === 'main' && (
         <Main startQuiz={startQuiz} />
       )}
-      {!loading && isQuizStarted && (
-        <Quiz data={data} countdownTime={countdownTime} endQuiz={endQuiz} />
+
+      {!loading && step === 'quiz' && (
+        <Quiz
+          data={data}
+          countdownTime={countdownTime}
+          endQuiz={endQuiz}
+          student={student}
+        />
       )}
-      {!loading && isQuizCompleted && (
-        <Result {...resultData} replayQuiz={replayQuiz} resetQuiz={resetQuiz} />
+
+      {!loading && step === 'result' && resultData && (
+        <Result
+          {...resultData}
+          student={student}
+          replayQuiz={replayQuiz}
+          resetQuiz={resetQuiz}
+        />
       )}
     </Layout>
   );
