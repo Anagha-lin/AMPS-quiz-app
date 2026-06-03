@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import {
   Container,
@@ -25,24 +25,20 @@ const Result = ({
   const [activeTab, setActiveTab] = useState('Stats');
 
   // =========================
-  // STABLE NORMALIZATION (NO CONDITIONALS)
+  // SAFE DATA NORMALIZATION
   // =========================
-  const safeQNA = useMemo(() => {
-    return Array.isArray(questionsAndAnswers)
-      ? questionsAndAnswers
-      : [];
-  }, [questionsAndAnswers]);
+  const safeQNA = Array.isArray(questionsAndAnswers)
+    ? questionsAndAnswers
+    : [];
 
   const safeTotal = Number(totalQuestions) || 0;
 
   // =========================
   // COMPUTE SCORE FROM SOURCE OF TRUTH
   // =========================
-  const computedCorrect = useMemo(() => {
-    return safeQNA.reduce((acc, item) => {
-      return acc + (item?.point === 1 ? 1 : 0);
-    }, 0);
-  }, [questionsAndAnswers]); // ✅ FIX: depend on raw input ONLY
+  const computedCorrect = safeQNA.reduce((acc, item) => {
+    return acc + (item?.point === 1 ? 1 : 0);
+  }, 0);
 
   const finalCorrect =
     Number(correctAnswers) !== computedCorrect
@@ -63,33 +59,59 @@ const Result = ({
     <Container>
 
       {/* =========================
-          STUDENT INFO
+          STUDENT INFORMATION
       ========================= */}
       {student ? (
         <Segment>
           <Header as="h2">
             <Icon name="user circle" />
-            <Header.Content>Candidate Information</Header.Content>
+            <Header.Content>
+              Candidate Information
+            </Header.Content>
           </Header>
 
-          <p><strong>Name:</strong> {student?.name || 'N/A'}</p>
-          <p><strong>ID:</strong> {student?.studentId || 'N/A'}</p>
-          <p><strong>Class:</strong> {student?.className || 'N/A'}</p>
+          <p>
+            <strong>Name:</strong>{' '}
+            {student?.name || 'N/A'}
+          </p>
+
+          <p>
+            <strong>ID:</strong>{' '}
+            {student?.studentId || 'N/A'}
+          </p>
+
+          <p>
+            <strong>Class:</strong>{' '}
+            {student?.className || 'N/A'}
+          </p>
 
           <Divider />
 
-          <p><strong>Score:</strong> {finalCorrect} / {safeTotal}</p>
-          <p><strong>Percentage:</strong> {percentage}%</p>
-          <p><strong>Status:</strong> {status}</p>
+          <p>
+            <strong>Score:</strong>{' '}
+            {finalCorrect} / {safeTotal}
+          </p>
+
+          <p>
+            <strong>Percentage:</strong>{' '}
+            {percentage}%
+          </p>
+
+          <p>
+            <strong>Status:</strong>{' '}
+            {status}
+          </p>
         </Segment>
       ) : (
         <Message warning>
-          <Message.Header>No student data found</Message.Header>
+          <Message.Header>
+            No student data found
+          </Message.Header>
         </Message>
       )}
 
       {/* =========================
-          MENU
+          NAVIGATION
       ========================= */}
       <Menu fluid widths={2}>
         <Menu.Item
@@ -97,6 +119,7 @@ const Result = ({
           active={activeTab === 'Stats'}
           onClick={handleTabClick}
         />
+
         <Menu.Item
           name="QNA"
           active={activeTab === 'QNA'}
